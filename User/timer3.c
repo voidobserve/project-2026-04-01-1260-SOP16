@@ -58,56 +58,6 @@ void TIMR3_IRQHandler(void) interrupt TMR3_IRQn
         }
     }
 
-#if 0
-    //
-    if (0 == (ADC_CFG0 & 0x01))
-    {
-        ADC_CFG0 |= 0x01 << 0; // 开启adc0转换
-    }
-
-    if (0 == ((ADC_CFG0 >> 1) & 0x01))
-    {
-        ADC_CFG0 |= 0x01 << 1; // 开启 adc1 转换
-    }
-
-    {
-        static u8 cnt;
-        cnt++;
-        if (cnt >= 10)
-        {
-            cnt = 0;
-            flag_is_time_to_check_engine = 1;
-
-            // 下面这段代码的中断频率不能比adc中断还要快
-            // 每次执行到这里，不用等adc2稳定，因为中断时间间隔比adc2稳定的时间还要长
-            if (ADC2_STATUS_NONE == cur_adc2_status ||
-                (ADC2_STATUS_SEL_FAN_DETECT == cur_adc2_status))
-            {
-                // adc2切换至检测热敏电阻的通道，并等待adc2稳定
-                adc2_channel_sel(ADC_SEL_PIN_GET_TEMP);
-                cur_adc2_status = ADC2_STATUS_SEL_GET_TEMP_WAITING;
-            }
-            else if (ADC2_STATUS_SEL_GET_TEMP_WAITING == cur_adc2_status)
-            {
-                ADC_CFG0 |= 0x01 << 2;                      // 开启 adc2 转换
-                cur_adc2_status = ADC2_STATUS_SEL_GET_TEMP; // 表示当前已经切换到了 检测热敏电阻的通道
-            }
-            else if (ADC2_STATUS_SEL_GET_TEMP == cur_adc2_status)
-            {
-                // adc2切换至检测风扇的通道，并等待adc2稳定
-                adc2_channel_sel(ADC_SEL_PIN_FAN_DETECT);
-                cur_adc2_status = ADC2_STATUS_SEL_FAN_DETECT_WAITING;
-            }
-            else if (ADC2_STATUS_SEL_FAN_DETECT_WAITING == cur_adc2_status)
-            {
-                ADC_CFG0 |= 0x01 << 2;                        // 开启 adc2 转换
-                cur_adc2_status = ADC2_STATUS_SEL_FAN_DETECT; // 检测风扇的通道
-            }
-        }
-    }
-#endif
-
-#if 1
     // 每次执行到这里，不用等 adc0 稳定，因为中断时间间隔比 adc0 稳定的时间还要长
     if (ADC_STATUS_NONE == cur_adc_status ||
         (ADC_STATUS_SEL_FAN_DETECT == cur_adc_status))
@@ -155,39 +105,6 @@ void TIMR3_IRQHandler(void) interrupt TMR3_IRQn
         ADC_CFG0 |= 0x01 << 0;                      // 开启adc0转换
         cur_adc_status = ADC_STATUS_SEL_FAN_DETECT; // 检测风扇的通道
     }
-#endif
-
-#if 0
-    // 每次执行到这里，不用等 adc0 稳定，因为中断时间间隔比 adc0 稳定的时间还要长
-    if (ADC_STATUS_NONE == cur_adc_status ||
-        (ADC_STATUS_SEL_GET_TEMP == cur_adc_status))
-    {
-        P05 = 0;
-
-        // adc0 切换至检测发动机的通道，并等待 adc0 稳定
-        adc_channel_sel(ADC_SEL_PIN_ENGINE);
-        cur_adc_status = ADC_STATUS_SEL_ENGINE_WAITING;
-    }
-    else if (ADC_STATUS_SEL_ENGINE_WAITING == cur_adc_status)
-    {
-        ADC_CFG0 |= 0x01 << 0;                  // 开启adc0转换
-        cur_adc_status = ADC_STATUS_SEL_ENGINE; // 表示当前已经切换到了 检测发动机的通道
-        P02 = 1;
-    }
-    else if (ADC_STATUS_SEL_ENGINE_DONE == cur_adc_status)
-    {
-        P02 = 0;
-        // adc0 切换至检测温度的通道，并等待 adc0 稳定
-        adc_channel_sel(ADC_SEL_PIN_TEMP);
-        cur_adc_status = ADC_STATUS_SEL_GET_TEMP_WAITING;
-    }
-    else if (ADC_STATUS_SEL_GET_TEMP_WAITING == cur_adc_status)
-    {
-        ADC_CFG0 |= 0x01 << 0;                    // 开启adc0转换
-        cur_adc_status = ADC_STATUS_SEL_GET_TEMP; // 检测温度的通道
-        P05 = 1;
-    }
-#endif
 
     __IRQnIPnPop(TMR3_IRQn);
 }

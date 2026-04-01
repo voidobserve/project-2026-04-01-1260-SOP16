@@ -8,6 +8,9 @@ volatile u16 limited_pwm_duty_due_to_unstable_engine = MAX_PWM_DUTY;
 // 由于风扇异常，限制的可以调节到的最大占空比（对所有PWM通道都生效，默认为最大占空比）
 volatile u16 limited_pwm_duty_due_to_fan_err = MAX_PWM_DUTY;
 
+volatile u8 flag_is_time_to_limit_pwm = 0;              // 标志位，是否到了限制占空比的定时时间（由定时器置位，置位之后不清零）
+volatile u16 limit_pwm_duty_val_by_time = MAX_PWM_DUTY; // 到了定时时间后，需要限制的占空比值
+
 volatile u16 cur_pwm_channel_0_duty;                          // 当前设置的、 pwm_channle_0 的占空比（只有遥控器指定要修改它的值或是定时器缓慢调节，才会被修改）
 volatile u16 expect_adjust_pwm_channel_0_duty = MAX_PWM_DUTY; // 存放期望调节到的 pwm_channle_0 占空比
 volatile u16 adjust_pwm_channel_0_duty = MAX_PWM_DUTY;        // pwm_channle_0 要调整到的占空比
@@ -83,9 +86,6 @@ void set_pwm_channel_1_duty(u16 channel_duty)
     STMR1_CMPAL = STMR_CMPA_VAL_L(((channel_duty) >> 0) & 0xFF); // 比较值
     STMR_LOADEN |= STMR_1_LOAD_EN(0x1);                          // 自动装载使能
 }
-
-
-
 
 // 根据9脚的电压来设定16脚的电平（过压保护）
 // void according_pin9_to_adjust_pin16(void)
@@ -191,7 +191,20 @@ u16 get_pwm_channel_x_adjust_duty(u16 pwm_adjust_duty)
 {
     // 存放函数的返回值 -- 最终的目标占空比
     // 根据设定的目标占空比，更新经过旋钮限制之后的目标占空比：
-    u16 tmp_pwm_duty = (u32)pwm_adjust_duty * limited_max_pwm_duty / MAX_PWM_DUTY; // pwm_adjust_duty * 旋钮限制的占空比系数
+    volatile u16 tmp_pwm_duty = 0;
+    volatile u16 limited_pwm_duty_due_to_schedule = PWM_DUTY_100_PERCENT; // 由定时时间限制的PWM占空比
+
+    if (flag_is_time_to_limit_pwm)
+    {
+        /*
+            由于旋钮调节优先级最高，定时时间限制的PWM占空比又不属于异常，
+            这里把可调的PWM占空比从 0 ~ limited_max_pwm_duty 对应的百分比 映射成
+            0 ~ SCHEDULE_TIME_TO_LIMIT_PWM_VAL 对应的百分比
+        */
+        limited_pwm_duty_due_to_schedule = limit_pwm_duty_val_by_time;
+    }
+
+    tmp_pwm_duty = ((u32)pwm_adjust_duty * limited_max_pwm_duty / PWM_DUTY_100_PERCENT) * limited_pwm_duty_due_to_schedule / PWM_DUTY_100_PERCENT; // pwm_adjust_duty * 旋钮限制的占空比系数
 
     // 温度、发动机异常功率不稳定、风扇异常，都是强制限定占空比
 

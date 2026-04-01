@@ -12,9 +12,15 @@ void update_max_pwm_duty_coefficient(void)
         如果为0，需要等到检测的ad值超过20%、30%......再使能旋钮的功能，否则不使能
         相当于给关机和开机之间划一个较大的死区
     */
-    static bit flag_is_last_limited_equal_zero = 0;
+    static volatile bit flag_is_last_limited_equal_zero = 0;
  
-    volatile u16 adc_val = adc_val_from_knob; // adc_val_from_knob 由adc中断更新
+    // volatile u16 adc_val = adc_val_from_knob; // adc_val_from_knob 由adc中断更新
+    static volatile u16 adc_val = 4096; // 默认ad值为最大，不限制pwm的最大占空比
+    if (adc_get_flag(ADC_SEL_PIN_KNOB))
+    {
+        adc_val = adc_get_val(ADC_SEL_PIN_KNOB);
+        adc_clear_flag(ADC_SEL_PIN_KNOB);
+    }
 
     // 它闪灯可能是因为功率太低，也可能是检测脚的波动，导致单片机触发了频繁开灯关灯的操作
     // 方法1：试着加大调光那里的电容，提供一个缓冲

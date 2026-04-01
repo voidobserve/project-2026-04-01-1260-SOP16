@@ -1,4 +1,4 @@
-C51 COMPILER V9.60.7.0   TIME0                                                             04/01/2026 15:05:24 PAGE 1   
+C51 COMPILER V9.60.7.0   TIME0                                                             04/01/2026 17:07:19 PAGE 1   
 
 
 C51 COMPILER V9.60.7.0, COMPILATION OF MODULE TIME0
@@ -62,7 +62,7 @@ line level    source
   46          //     TMR0_CONL |= TMR_SOURCE_SEL(0x05);    // 配置定时器的时钟源，不用任何时钟
   47          
   48          //     // 清除定时器的计数值
-C51 COMPILER V9.60.7.0   TIME0                                                             04/01/2026 15:05:24 PAGE 2   
+C51 COMPILER V9.60.7.0   TIME0                                                             04/01/2026 17:07:19 PAGE 2   
 
   49          //     TMR0_CNTL = 0;
   50          //     TMR0_CNTH = 0;
@@ -126,7 +126,7 @@ line level    source
  107   2              { // 风扇状态检测，累计一段时间后更新状态
  108   3                  static u16 fan_normal_cnt = 0;
  109   3                  static u16 fan_err_cnt = 0;
-C51 COMPILER V9.60.7.0   TIME0                                                             04/01/2026 15:05:24 PAGE 3   
+C51 COMPILER V9.60.7.0   TIME0                                                             04/01/2026 17:07:19 PAGE 3   
 
  110   3      
  111   3                  if (flag_tim_scan_fan_is_err) // 如果检测到了风扇异常
@@ -153,29 +153,49 @@ line level    source
  132   4                  }
  133   3              } // 风扇状态检测，累计一段时间后更新状态
  134   2      
- 135   2              // {
- 136   2              //     static volatile u32 cnt = 0;
- 137   2      
- 138   2              //     if (TEMP_75 == temp_status)
- 139   2              //     {
- 140   2              //         cnt++;
- 141   2              //         if (cnt >= (u32)TMR1_CNT_5_MINUTES)
- 142   2              //         {
- 143   2      
- 144   2              //         }
- 145   2              //     }
- 146   2              // }
- 147   2          }
- 148   1      
- 149   1          // 退出中断设置IP，不可删除
- 150   1          __IRQnIPnPop(TMR0_IRQn);
- 151   1      }
+ 135   2              { // 用于上电多久之后，限制PWM最大的占空比
+ 136   3                  static u32 cnt = 0;
+ 137   3                  if (0 == flag_is_time_to_limit_pwm)
+ 138   3                  {
+ 139   4                      /*
+ 140   4                          如果没有到到限制占空比的时间（标志位不为1）
+ 141   4                          则进行计时
+ 142   4                      */
+ 143   4                      cnt++;
+ 144   4                      if (cnt >= SCHEDULE_TIME_TO_LIMIT_PWM)
+ 145   4                      {
+ 146   5                          cnt = 0;
+ 147   5                          flag_is_time_to_limit_pwm = 1;
+ 148   5                      }
+ 149   4                  }
+ 150   3      
+ 151   3                  if (flag_is_time_to_limit_pwm) // 如果到限制占空比的时间了
+ 152   3                  {
+ 153   4                      cnt++;
+ 154   4                      // 每过一段时间，只调节1单位的占空比值
+ 155   4                      if (cnt >= SCHEDULE_TIME_TO_LIMIT_PWM_ADJUST_UNIT_IN_DURATION)
+ 156   4                      {
+ 157   5                          cnt = 0;
+ 158   5                          if (limit_pwm_duty_val_by_time > SCHEDULE_TIME_TO_LIMIT_PWM_VAL)
+ 159   5                          {
+ 160   6                              limit_pwm_duty_val_by_time -= 1;
+ 161   6                          }
+ 162   5                      } 
+ 163   4                  }
+ 164   3              }
+ 165   2          }
+ 166   1      
+ 167   1          // 退出中断设置IP，不可删除
+ 168   1          __IRQnIPnPop(TMR0_IRQn);
+ 169   1      }
 
+
+C51 COMPILER V9.60.7.0   TIME0                                                             04/01/2026 17:07:19 PAGE 4   
 
 MODULE INFORMATION:   STATIC OVERLAYABLE
-   CODE SIZE        =    228    ----
+   CODE SIZE        =    382    ----
    CONSTANT SIZE    =   ----    ----
-   XDATA SIZE       =      7    ----
+   XDATA SIZE       =     11    ----
    PDATA SIZE       =   ----    ----
    DATA SIZE        =   ----    ----
    IDATA SIZE       =   ----    ----

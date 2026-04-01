@@ -18,8 +18,6 @@ static volatile u16 filter_buff[FILTER_BUFF_SIZE] = {
     0xFFFF,
 };
 
-// static volatile u16 filter_buff_2[270] = {0}; // 用于滤波的数组 (对应 5.83ms 执行一次的函数 according_pin9_to_adjust_pwm )
-// static volatile u16 filter_buff_2[25] = {0}; // 用于滤波的数组
 static volatile u16 filter_buff_2[FILTER_BUFF_2_SIZE]; // 用于滤波的数组
 static volatile u16 filter_buff_2_index;               // 用于记录滤波的数组下标
 
@@ -41,7 +39,25 @@ void according_pin9_to_adjust_pwm(void)
     // volatile bit flag_is_engine_unstable = 0; // 标志位，是否检测到了发动机功率不稳定，只在该函数内使用
 
     volatile u32 adc_pin_9_avg = 0;             // 存放平均值
-    volatile u16 adc_val = adc_val_from_engine; // adc_val_from_engine 由adc中断更新
+    static volatile u16 adc_val = 0;
+    static volatile u8 is_init = 0; // 是否初始化
+    
+    if (adc_get_flag(ADC_SEL_PIN_ENGINE))
+    {
+        adc_val = adc_get_val(ADC_SEL_PIN_ENGINE);
+        adc_clear_flag(ADC_SEL_PIN_ENGINE);
+
+        if (is_init == 0)
+        {
+            is_init = 1; // 表示至少获取了一次ad值数据
+        }
+    }
+
+    if (0 == is_init)
+    {
+        // 如果没有获取过数据，直接返回
+        return;
+    }  
 
     if (filter_buff[0] == 0xFFFF) // 如果是第一次检测，让数组内所有元素都变为第一次采集的数据，方便快速作出变化
     {
@@ -147,8 +163,6 @@ void according_pin9_to_adjust_pwm(void)
             {
                 limited_pwm_duty_due_to_unstable_engine = PWM_DUTY_50_PERCENT;
             }
-
-            // flag_is_engine_unstable = 1;
         }
         else if (over_drive_status == 0)
         {
@@ -182,8 +196,6 @@ void according_pin9_to_adjust_pwm(void)
             if (limited_pwm_duty_due_to_unstable_engine > PWM_DUTY_50_PERCENT)
             {
                 limited_pwm_duty_due_to_unstable_engine -= 2;
-
-                // flag_is_engine_unstable = 1;
             }
             else if (limited_pwm_duty_due_to_unstable_engine < PWM_DUTY_50_PERCENT)
             {
@@ -214,25 +226,6 @@ void according_pin9_to_adjust_pwm(void)
             {
                 limited_pwm_duty_due_to_unstable_engine = PWM_DUTY_30_PERCENT;
             }
-
-            // flag_is_engine_unstable = 1;
         }
     }
-
-    // if (flag_is_engine_unstable)
-    // {
-    //     /*
-    //         如果前面检测到了发动机功率不稳定，这里立即更新pwm占空比
-
-    //         实际测试这个代码块用时 126 ~ 139 us
-    //     */
-    //     // flag_is_engine_unstable = 0; // 局部变量，到最后可以不清零
-    //     adjust_pwm_channel_0_duty = get_pwm_channel_x_adjust_duty(expect_adjust_pwm_channel_0_duty);
-    //     adjust_pwm_channel_1_duty = get_pwm_channel_x_adjust_duty(expect_adjust_pwm_channel_1_duty);
-    //     cur_pwm_channel_0_duty = adjust_pwm_channel_0_duty;
-    //     cur_pwm_channel_1_duty = adjust_pwm_channel_1_duty;
-
-    //     set_pwm_channel_0_duty(cur_pwm_channel_0_duty);
-    //     set_pwm_channel_1_duty(cur_pwm_channel_1_duty);
-    // }
 }

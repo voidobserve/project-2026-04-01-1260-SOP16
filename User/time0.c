@@ -132,18 +132,36 @@ void TIMR0_IRQHandler(void) interrupt TMR0_IRQn
             }
         } // 风扇状态检测，累计一段时间后更新状态
 
-        // {
-        //     static volatile u32 cnt = 0;
+        { // 用于上电多久之后，限制PWM最大的占空比
+            static u32 cnt = 0;
+            if (0 == flag_is_time_to_limit_pwm)
+            {
+                /*
+                    如果没有到到限制占空比的时间（标志位不为1）
+                    则进行计时
+                */
+                cnt++;
+                if (cnt >= SCHEDULE_TIME_TO_LIMIT_PWM)
+                {
+                    cnt = 0;
+                    flag_is_time_to_limit_pwm = 1;
+                }
+            }
 
-        //     if (TEMP_75 == temp_status)
-        //     {
-        //         cnt++;
-        //         if (cnt >= (u32)TMR1_CNT_5_MINUTES)
-        //         {
-
-        //         }
-        //     }
-        // }
+            if (flag_is_time_to_limit_pwm) // 如果到限制占空比的时间了
+            {
+                cnt++;
+                // 每过一段时间，只调节1单位的占空比值
+                if (cnt >= SCHEDULE_TIME_TO_LIMIT_PWM_ADJUST_UNIT_IN_DURATION)
+                {
+                    cnt = 0;
+                    if (limit_pwm_duty_val_by_time > SCHEDULE_TIME_TO_LIMIT_PWM_VAL)
+                    {
+                        limit_pwm_duty_val_by_time -= 1;
+                    }
+                } 
+            }
+        }
     }
 
     // 退出中断设置IP，不可删除
